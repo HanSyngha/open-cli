@@ -25,30 +25,173 @@ A2G-CLI는 **Gemini CLI의 개념을 기업 환경에 맞춰 완전히 재구축
 ### 필수 요구사항
 - Node.js >= 20.0.0
 - npm >= 10.0.0
+- OpenAI Compatible API 엔드포인트 (Gemini, LiteLLM 등)
 
-### 설치
+### 1. 설치
 
 ```bash
 # 저장소 클론
 git clone https://github.com/your-repo/a2g-cli.git
 cd a2g-cli
 
-# 의존성 설치
+# 의존성 설치 (220개 패키지)
 npm install
 
-# 빌드
+# TypeScript 빌드
 npm run build
-
-# 실행
-npm start
 ```
 
-### 개발 모드
+### 2. 초기 설정
+
+A2G-CLI를 처음 사용하기 전에 초기화가 필요합니다:
 
 ```bash
-# TypeScript를 직접 실행
-npm run dev
+# A2G-CLI 초기화 (디렉토리 및 설정 파일 생성)
+node dist/cli.js config init
 ```
+
+실행 결과:
+```
+🚀 A2G-CLI 초기화 중...
+
+✅ 초기화 완료!
+
+생성된 디렉토리 및 파일:
+  ~/.a2g-cli/
+  ~/.a2g-cli/config.json
+  ~/.a2g-cli/sessions/
+  ~/.a2g-cli/docs/
+  ~/.a2g-cli/backups/
+  ~/.a2g-cli/logs/
+
+📡 기본 엔드포인트 설정:
+  이름: Gemini 2.0 Flash (Default)
+  URL: https://generativelanguage.googleapis.com/v1beta/openai/
+  모델: Gemini 2.0 Flash (gemini-2.0-flash)
+```
+
+### 3. 기본 사용법
+
+#### 설정 확인
+```bash
+# 현재 설정 보기
+node dist/cli.js config show
+```
+
+#### LLM과 대화하기
+```bash
+# 일반 응답
+node dist/cli.js chat "Hello! Who are you?"
+
+# 스트리밍 응답 (실시간 출력)
+node dist/cli.js chat "Tell me a joke" -s
+
+# 시스템 프롬프트 사용
+node dist/cli.js chat "파이썬 설명해줘" --system "You are a helpful programming tutor"
+```
+
+### 4. 사용 가능한 명령어
+
+#### 설정 관리
+```bash
+# 초기화
+node dist/cli.js config init
+
+# 설정 확인
+node dist/cli.js config show
+
+# 설정 초기화 (공장 초기화)
+node dist/cli.js config reset
+```
+
+#### LLM 대화
+```bash
+# 기본 대화
+node dist/cli.js chat "메시지"
+
+# 스트리밍 응답
+node dist/cli.js chat "메시지" -s
+
+# 시스템 프롬프트 지정
+node dist/cli.js chat "메시지" --system "시스템 프롬프트"
+```
+
+#### 도움말
+```bash
+# 전체 도움말
+node dist/cli.js help
+
+# 버전 확인
+node dist/cli.js --version
+```
+
+### 5. 개발 모드
+
+개발 중에는 TypeScript를 직접 실행할 수 있습니다:
+
+```bash
+# ts-node로 직접 실행 (빌드 불필요)
+npm run dev
+
+# 자동 빌드 (변경 감지)
+npm run watch
+```
+
+### 6. 실제 사용 예시
+
+#### 예시 1: 코드 질문
+```bash
+$ node dist/cli.js chat "JavaScript의 async/await는 어떻게 동작하나요?" -s
+
+💬 A2G-CLI Chat
+
+모델: gemini-2.0-flash
+엔드포인트: https://generativelanguage.googleapis.com/v1beta/openai/
+
+🤖 Assistant:
+async/await는 JavaScript의 비동기 프로그래밍을 더 직관적으로...
+(스트리밍으로 실시간 출력)
+```
+
+#### 예시 2: 시스템 프롬프트 활용
+```bash
+$ node dist/cli.js chat "React hooks 설명" --system "You are an expert React developer. Explain in Korean with examples."
+
+🤖 Assistant:
+React Hooks는 함수형 컴포넌트에서 상태와 생명주기 기능을...
+```
+
+#### 예시 3: 설정 확인
+```bash
+$ node dist/cli.js config show
+
+📋 A2G-CLI 설정
+
+현재 엔드포인트:
+  ID: ep-gemini-default
+  이름: Gemini 2.0 Flash (Default)
+  URL: https://generativelanguage.googleapis.com/v1beta/openai/
+  API Key: ******** (마스킹)
+  우선순위: 1
+
+현재 모델:
+  ID: gemini-2.0-flash
+  이름: Gemini 2.0 Flash
+  최대 토큰: 1,048,576
+  상태: ✅ 활성
+  헬스: 🟢 정상
+```
+
+---
+
+## ✨ 현재 구현된 기능 (Phase 1: 40%)
+
+- ✅ **프로젝트 초기 설정** - TypeScript, ESLint, Prettier
+- ✅ **설정 파일 시스템** - ConfigManager, ~/.a2g-cli/ 디렉토리
+- ✅ **OpenAI Compatible API 클라이언트** - LLMClient, 스트리밍 지원
+- ✅ **기본 CLI 명령어** - config, chat
+- ⬜ 파일 시스템 도구 (LLM Tools) - 개발 예정
+- ⬜ 대화형 모드 - 개발 예정
 
 ---
 
@@ -57,16 +200,27 @@ npm run dev
 ```
 a2g-cli/
 ├── src/                    # 소스 코드
-│   ├── cli.ts             # CLI Entry Point
+│   ├── cli.ts             # CLI Entry Point (Commander.js)
 │   ├── index.ts           # Main Export
+│   ├── constants.ts       # 프로젝트 상수
 │   ├── core/              # 핵심 로직
-│   ├── ui/                # 터미널 UI 컴포넌트
-│   ├── tools/             # LLM Tools
+│   │   ├── config-manager.ts    # 설정 관리 (싱글톤)
+│   │   └── llm-client.ts        # LLM API 클라이언트
+│   ├── ui/                # 터미널 UI 컴포넌트 (예정)
+│   ├── tools/             # LLM Tools (예정)
 │   ├── utils/             # 유틸리티 함수
+│   │   └── file-system.ts       # 파일 시스템 유틸
 │   └── types/             # TypeScript 타입 정의
+│       └── index.ts              # 전역 타입
 ├── tests/                 # 테스트 파일
 ├── docs/                  # 문서
-├── dist/                  # 빌드 출력
+├── dist/                  # 빌드 출력 (tsc)
+├── ~/.a2g-cli/           # 사용자 설정 디렉토리
+│   ├── config.json       # 설정 파일
+│   ├── sessions/         # 세션 저장
+│   ├── docs/             # 로컬 문서
+│   ├── backups/          # 백업
+│   └── logs/             # 로그
 ├── PROGRESS.md           # 개발 진행 상황
 ├── INTEGRATED_PROJECT_DOCUMENT.md  # 프로젝트 전체 문서
 ├── package.json
@@ -78,12 +232,13 @@ a2g-cli/
 
 ## 🎯 개발 로드맵
 
-### Phase 1: 기초 구축 (3-6개월)
+### Phase 1: 기초 구축 (진행률: 40%)
 - [x] 프로젝트 초기 설정
-- [ ] 기본 CLI 프레임워크
-- [ ] 로컬 모델 엔드포인트 연결
-- [ ] 파일 시스템 도구
-- [ ] 기본 명령어 시스템
+- [x] 기본 CLI 프레임워크
+- [x] 설정 파일 시스템
+- [x] 로컬 모델 엔드포인트 연결 (OpenAI Compatible API)
+- [ ] 파일 시스템 도구 (LLM Tools)
+- [ ] 대화형 모드 (Interactive Mode)
 
 ### Phase 2: 상호작용 고도화 (6-12개월)
 - [ ] 인터랙티브 터미널 UI (Ink/React 기반)
@@ -115,6 +270,79 @@ a2g-cli/
 - **타입 검사**: TypeScript Strict Mode
 - **린팅**: ESLint + @typescript-eslint
 - **포맷팅**: Prettier
+
+---
+
+## 🌐 지원 모델
+
+### 현재 테스트 완료
+- ✅ **Gemini 2.0 Flash** (Google)
+  - Endpoint: `https://generativelanguage.googleapis.com/v1beta/openai/`
+  - Context: 1M tokens
+  - 기능: 일반 응답, 스트리밍 지원
+
+### 향후 지원 예정 (LiteLLM 기반)
+- ⬜ **GLM4.5** (Zhipu AI)
+- ⬜ **DeepSeek V3** (deepseek-v3-0324)
+- ⬜ **GPT-OSS-120B**
+
+모든 OpenAI Compatible API 엔드포인트와 호환됩니다.
+
+---
+
+## 🔧 트러블슈팅
+
+### Q1: `config init` 후에도 설정이 없다고 나와요
+```bash
+# 초기화 상태 확인
+ls -la ~/.a2g-cli/
+
+# config.json 확인
+cat ~/.a2g-cli/config.json
+
+# 다시 초기화
+node dist/cli.js config init
+```
+
+### Q2: API 키 에러가 발생해요
+```bash
+# 설정 확인
+node dist/cli.js config show
+
+# API 키 마스킹 해제하여 확인
+cat ~/.a2g-cli/config.json | grep apiKey
+```
+
+Gemini API 키가 유효한지 확인하세요:
+- 키 형식: `AIza...`
+- 엔드포인트: `https://generativelanguage.googleapis.com/v1beta/openai/`
+
+### Q3: 네트워크 에러가 발생해요
+```
+네트워크 에러: 엔드포인트에 연결할 수 없습니다.
+```
+
+원인:
+- 인터넷 연결 확인
+- 프록시 설정 확인
+- 방화벽 설정 확인
+- 엔드포인트 URL 확인
+
+### Q4: TypeScript 빌드 에러
+```bash
+# node_modules 삭제 후 재설치
+rm -rf node_modules package-lock.json
+npm install
+
+# 빌드
+npm run build
+```
+
+### Q5: 스트리밍 응답이 느려요
+이는 정상입니다. LLM이 텍스트를 생성하는 속도에 따라 다르며:
+- Gemini 2.0 Flash: 빠른 응답 속도
+- 일반 응답 (`-s` 없이): 전체 응답 후 한 번에 표시
+- 스트리밍 응답 (`-s`): 실시간 생성 표시
 
 ---
 
