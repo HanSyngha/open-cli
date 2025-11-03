@@ -14,6 +14,7 @@ import inquirer from 'inquirer';
 import { configManager } from './core/config-manager';
 import { createLLMClient, LLMClient } from './core/llm-client';
 import { sessionManager } from './core/session-manager';
+import { documentManager } from './core/document-manager';
 import { EndpointConfig } from './types';
 
 const program = new Command();
@@ -62,6 +63,7 @@ program.action(async () => {
     console.log(chalk.white('  /load           - 저장된 대화 불러오기'));
     console.log(chalk.white('  /sessions       - 저장된 대화 목록 보기'));
     console.log(chalk.white('  /endpoint       - 엔드포인트 보기/전환'));
+    console.log(chalk.white('  /docs           - 로컬 문서 보기/검색'));
     console.log(chalk.white('  /help           - 도움말\n'));
 
     // 메시지 히스토리
@@ -116,6 +118,7 @@ program.action(async () => {
         console.log(chalk.white('  /load           - 저장된 대화 불러오기'));
         console.log(chalk.white('  /sessions       - 저장된 대화 목록 보기'));
         console.log(chalk.white('  /endpoint       - 엔드포인트 보기/전환'));
+        console.log(chalk.white('  /docs           - 로컬 문서 보기/검색'));
         console.log(chalk.white('  /help           - 이 도움말\n'));
         continue;
       }
@@ -185,6 +188,112 @@ program.action(async () => {
           }
         } catch (error) {
           console.error(chalk.red('\n❌ 엔드포인트 조회 실패:'));
+          if (error instanceof Error) {
+            console.error(chalk.red(error.message));
+          }
+          console.log();
+        }
+        continue;
+      }
+
+      // /docs - 로컬 문서 보기/검색
+      if (userMessage.startsWith('/docs')) {
+        try {
+          const parts = userMessage.split(' ');
+          const subcommand = parts[1] || '';
+          const arg = parts.slice(2).join(' ').trim();
+
+          if (subcommand === '' || subcommand === 'list') {
+            // 문서 목록
+            const documents = await documentManager.listDocuments();
+
+            if (documents.length === 0) {
+              console.log(chalk.yellow('\n저장된 문서가 없습니다.\n'));
+              console.log(chalk.white('새 문서 추가: open docs add\n'));
+              continue;
+            }
+
+            console.log(chalk.cyan.bold('\n📚 로컬 문서 목록\n'));
+
+            documents.slice(0, 10).forEach((doc, index) => {
+              console.log(chalk.white('  ' + (index + 1) + '. ' + chalk.bold(doc.title)));
+              console.log(chalk.dim('     ID: ' + doc.id));
+
+              if (doc.tags.length > 0) {
+                console.log(chalk.dim('     태그: ' + doc.tags.join(', ')));
+              }
+
+              if (doc.preview) {
+                console.log(chalk.dim('     "' + doc.preview.substring(0, 60) + '..."'));
+              }
+
+              console.log();
+            });
+
+            if (documents.length > 10) {
+              console.log(chalk.dim('... 외 ' + (documents.length - 10) + '개 문서\n'));
+            }
+
+            console.log(chalk.dim('문서 보기: /docs view <id>'));
+            console.log(chalk.dim('문서 검색: /docs search <query>\n'));
+          } else if (subcommand === 'search' && arg) {
+            // 문서 검색
+            const spinner = ora('검색 중...').start();
+            const results = await documentManager.searchDocuments(arg);
+            spinner.stop();
+
+            if (results.length === 0) {
+              console.log(chalk.yellow('\n검색 결과가 없습니다.\n'));
+              continue;
+            }
+
+            console.log(chalk.cyan.bold('\n🔍 검색 결과: "' + arg + '"\n'));
+
+            results.slice(0, 5).forEach((doc, index) => {
+              console.log(chalk.white('  ' + (index + 1) + '. ' + chalk.bold(doc.title)));
+              console.log(chalk.dim('     ID: ' + doc.id));
+
+              if (doc.tags.length > 0) {
+                console.log(chalk.dim('     태그: ' + doc.tags.join(', ')));
+              }
+
+              console.log();
+            });
+
+            if (results.length > 5) {
+              console.log(chalk.dim('... 외 ' + (results.length - 5) + '개 문서\n'));
+            }
+
+            console.log(chalk.dim('문서 보기: /docs view <id>\n'));
+          } else if (subcommand === 'view' && arg) {
+            // 문서 보기
+            const document = await documentManager.getDocument(arg);
+
+            if (!document) {
+              console.log(chalk.red('\n문서를 찾을 수 없습니다: ' + arg + '\n'));
+              console.log(chalk.white('문서 목록: /docs list\n'));
+              continue;
+            }
+
+            console.log(chalk.cyan.bold('\n📄 ' + document.metadata.title + '\n'));
+            console.log(chalk.dim('ID: ' + document.metadata.id));
+
+            if (document.metadata.tags.length > 0) {
+              console.log(chalk.dim('태그: ' + document.metadata.tags.join(', ')));
+            }
+
+            console.log(chalk.white('\n' + '─'.repeat(60) + '\n'));
+            console.log(document.content);
+            console.log(chalk.white('\n' + '─'.repeat(60) + '\n'));
+          } else {
+            // 사용법 안내
+            console.log(chalk.yellow('\n📚 /docs 명령어 사용법:\n'));
+            console.log(chalk.white('  /docs              - 문서 목록 보기'));
+            console.log(chalk.white('  /docs search <query> - 문서 검색'));
+            console.log(chalk.white('  /docs view <id>     - 문서 내용 보기\n'));
+          }
+        } catch (error) {
+          console.error(chalk.red('\n❌ 문서 조회 실패:'));
           if (error instanceof Error) {
             console.error(chalk.red(error.message));
           }
@@ -937,6 +1046,283 @@ configCommand
       console.log(chalk.white('  모델: ' + (endpoint.models.find((m) => m.enabled)?.name || '') + '\n'));
     } catch (error) {
       console.error(chalk.red('\n❌ 엔드포인트 전환 실패:'));
+      if (error instanceof Error) {
+        console.error(chalk.red(error.message));
+      }
+      console.log();
+      process.exit(1);
+    }
+  });
+
+/**
+ * docs 명령어 - 로컬 문서 관리
+ */
+const docsCommand = program.command('docs').description('로컬 문서 관리 (마크다운 지식 베이스)');
+
+/**
+ * docs list - 모든 문서 목록
+ */
+docsCommand
+  .command('list')
+  .description('모든 문서 목록 보기')
+  .action(async () => {
+    try {
+      const documents = await documentManager.listDocuments();
+
+      if (documents.length === 0) {
+        console.log(chalk.yellow('\n저장된 문서가 없습니다.\n'));
+        console.log(chalk.white('새 문서 추가: open docs add\n'));
+        return;
+      }
+
+      console.log(chalk.cyan.bold('\n📚 로컬 문서 목록\n'));
+
+      documents.forEach((doc, index) => {
+        const createdDate = new Date(doc.createdAt).toLocaleDateString('ko-KR');
+        console.log(chalk.white('  ' + (index + 1) + '. ' + chalk.bold(doc.title)));
+        console.log(chalk.dim('     ID: ' + doc.id));
+        console.log(chalk.dim('     생성: ' + createdDate + ' | 길이: ' + doc.contentLength + '자'));
+
+        if (doc.tags.length > 0) {
+          console.log(chalk.dim('     태그: ' + doc.tags.join(', ')));
+        }
+
+        if (doc.preview) {
+          console.log(chalk.dim('     "' + doc.preview + (doc.contentLength > 100 ? '...' : '') + '"'));
+        }
+
+        console.log();
+      });
+
+      console.log(chalk.dim('총 ' + documents.length + '개 문서\n'));
+    } catch (error) {
+      console.error(chalk.red('\n❌ 문서 목록 조회 실패:'));
+      if (error instanceof Error) {
+        console.error(chalk.red(error.message));
+      }
+      console.log();
+      process.exit(1);
+    }
+  });
+
+/**
+ * docs add - 새 문서 추가
+ */
+docsCommand
+  .command('add')
+  .description('새 문서 추가 (대화형)')
+  .action(async () => {
+    try {
+      console.log(chalk.cyan.bold('\n📝 새 문서 추가\n'));
+
+      const answers = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'title',
+          message: '문서 제목:',
+          validate: (input: string) => {
+            if (!input.trim()) {
+              return '제목을 입력해주세요.';
+            }
+            return true;
+          },
+        },
+        {
+          type: 'editor',
+          name: 'content',
+          message: '문서 내용 (에디터가 열립니다):',
+          default: '# 제목\n\n내용을 입력하세요...\n',
+        },
+        {
+          type: 'input',
+          name: 'tags',
+          message: '태그 (쉼표로 구분, 선택사항):',
+          default: '',
+        },
+      ]);
+
+      const tags = answers.tags
+        .split(',')
+        .map((t: string) => t.trim())
+        .filter((t: string) => t.length > 0);
+
+      const docId = await documentManager.addDocument(answers.title.trim(), answers.content, tags);
+
+      console.log(chalk.green('\n✅ 문서가 추가되었습니다!\n'));
+      console.log(chalk.white('  제목: ' + answers.title.trim()));
+      console.log(chalk.white('  ID: ' + docId));
+      console.log(chalk.white('  길이: ' + answers.content.length + '자'));
+      if (tags.length > 0) {
+        console.log(chalk.white('  태그: ' + tags.join(', ')));
+      }
+      console.log();
+    } catch (error) {
+      console.error(chalk.red('\n❌ 문서 추가 실패:'));
+      if (error instanceof Error) {
+        console.error(chalk.red(error.message));
+      }
+      console.log();
+      process.exit(1);
+    }
+  });
+
+/**
+ * docs view <id> - 문서 내용 보기
+ */
+docsCommand
+  .command('view <id>')
+  .description('문서 내용 보기')
+  .action(async (id: string) => {
+    try {
+      const document = await documentManager.getDocument(id);
+
+      if (!document) {
+        console.log(chalk.red('\n문서를 찾을 수 없습니다: ' + id + '\n'));
+        console.log(chalk.white('문서 목록: open docs list\n'));
+        return;
+      }
+
+      console.log(chalk.cyan.bold('\n📄 ' + document.metadata.title + '\n'));
+      console.log(chalk.dim('ID: ' + document.metadata.id));
+      console.log(chalk.dim('생성: ' + new Date(document.metadata.createdAt).toLocaleString('ko-KR')));
+      console.log(chalk.dim('수정: ' + new Date(document.metadata.updatedAt).toLocaleString('ko-KR')));
+
+      if (document.metadata.tags.length > 0) {
+        console.log(chalk.dim('태그: ' + document.metadata.tags.join(', ')));
+      }
+
+      console.log(chalk.white('\n' + '─'.repeat(60) + '\n'));
+      console.log(document.content);
+      console.log(chalk.white('\n' + '─'.repeat(60) + '\n'));
+    } catch (error) {
+      console.error(chalk.red('\n❌ 문서 조회 실패:'));
+      if (error instanceof Error) {
+        console.error(chalk.red(error.message));
+      }
+      console.log();
+      process.exit(1);
+    }
+  });
+
+/**
+ * docs search <query> - 문서 검색
+ */
+docsCommand
+  .command('search <query>')
+  .description('문서 검색 (제목, 내용, 태그)')
+  .action(async (query: string) => {
+    try {
+      console.log(chalk.cyan.bold('\n🔍 검색 중: "' + query + '"\n'));
+
+      const spinner = ora('검색 중...').start();
+      const results = await documentManager.searchDocuments(query);
+      spinner.stop();
+
+      if (results.length === 0) {
+        console.log(chalk.yellow('검색 결과가 없습니다.\n'));
+        return;
+      }
+
+      console.log(chalk.green('✅ ' + results.length + '개 문서 발견\n'));
+
+      results.forEach((doc, index) => {
+        const createdDate = new Date(doc.createdAt).toLocaleDateString('ko-KR');
+        console.log(chalk.white('  ' + (index + 1) + '. ' + chalk.bold(doc.title)));
+        console.log(chalk.dim('     ID: ' + doc.id));
+        console.log(chalk.dim('     생성: ' + createdDate));
+
+        if (doc.tags.length > 0) {
+          console.log(chalk.dim('     태그: ' + doc.tags.join(', ')));
+        }
+
+        if (doc.preview) {
+          console.log(chalk.dim('     "' + doc.preview + '..."'));
+        }
+
+        console.log();
+      });
+    } catch (error) {
+      console.error(chalk.red('\n❌ 문서 검색 실패:'));
+      if (error instanceof Error) {
+        console.error(chalk.red(error.message));
+      }
+      console.log();
+      process.exit(1);
+    }
+  });
+
+/**
+ * docs delete <id> - 문서 삭제
+ */
+docsCommand
+  .command('delete <id>')
+  .description('문서 삭제')
+  .action(async (id: string) => {
+    try {
+      const document = await documentManager.getDocument(id);
+
+      if (!document) {
+        console.log(chalk.red('\n문서를 찾을 수 없습니다: ' + id + '\n'));
+        return;
+      }
+
+      console.log(chalk.yellow.bold('\n⚠️  문서 삭제\n'));
+      console.log(chalk.white('  제목: ' + document.metadata.title));
+      console.log(chalk.white('  생성: ' + new Date(document.metadata.createdAt).toLocaleDateString('ko-KR')));
+      console.log(chalk.white('  길이: ' + document.metadata.contentLength + '자\n'));
+
+      const answer = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'confirm',
+          message: '정말 삭제하시겠습니까?',
+          default: false,
+        },
+      ]);
+
+      if (!answer.confirm) {
+        console.log(chalk.yellow('\n취소되었습니다.\n'));
+        return;
+      }
+
+      await documentManager.deleteDocument(id);
+      console.log(chalk.green('\n✅ 문서가 삭제되었습니다!\n'));
+    } catch (error) {
+      console.error(chalk.red('\n❌ 문서 삭제 실패:'));
+      if (error instanceof Error) {
+        console.error(chalk.red(error.message));
+      }
+      console.log();
+      process.exit(1);
+    }
+  });
+
+/**
+ * docs tags - 모든 태그 목록
+ */
+docsCommand
+  .command('tags')
+  .description('모든 태그 목록 보기')
+  .action(async () => {
+    try {
+      const tags = await documentManager.getAllTags();
+
+      if (tags.length === 0) {
+        console.log(chalk.yellow('\n태그가 없습니다.\n'));
+        return;
+      }
+
+      console.log(chalk.cyan.bold('\n🏷️  모든 태그\n'));
+
+      for (let index = 0; index < tags.length; index++) {
+        const tag = tags[index]!;
+        const docs = await documentManager.getDocumentsByTag(tag);
+        console.log(chalk.white('  ' + (index + 1) + '. ' + chalk.bold(tag) + chalk.dim(' (' + docs.length + '개 문서)')));
+      }
+
+      console.log(chalk.dim('\n총 ' + tags.length + '개 태그\n'));
+    } catch (error) {
+      console.error(chalk.red('\n❌ 태그 목록 조회 실패:'));
       if (error instanceof Error) {
         console.error(chalk.red(error.message));
       }

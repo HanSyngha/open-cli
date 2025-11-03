@@ -139,6 +139,7 @@ $ open
   /load           - 저장된 대화 불러오기
   /sessions       - 저장된 대화 목록 보기
   /endpoint       - 엔드포인트 보기/전환
+  /docs           - 로컬 문서 보기/검색
   /help           - 도움말
 
 ? You: Hello! How are you?
@@ -279,6 +280,80 @@ $ open
 
 **세션 파일 위치**: `~/.open-cli/sessions/`
 
+#### 로컬 문서 시스템 (Phase 2 신기능!)
+
+마크다운 문서를 로컬에 저장하고 검색할 수 있는 오프라인 지식 베이스:
+
+```bash
+# 모든 문서 목록 보기
+node dist/cli.js docs list
+
+# 새 문서 추가 (대화형 에디터 열림)
+node dist/cli.js docs add
+
+# 문서 내용 보기
+node dist/cli.js docs view <document-id>
+
+# 문서 검색 (제목, 내용, 태그)
+node dist/cli.js docs search "검색어"
+
+# 문서 삭제
+node dist/cli.js docs delete <document-id>
+
+# 모든 태그 목록
+node dist/cli.js docs tags
+```
+
+**Interactive Mode에서 문서 사용**:
+```bash
+$ open
+
+? You: /docs
+
+📚 로컬 문서 목록
+
+  1. TypeScript 고급 패턴
+     ID: doc-1730640000000-abc123
+     태그: typescript, patterns
+     "TypeScript의 고급 타입 패턴들을 정리한 문서..."
+
+  2. API 설계 가이드
+     ID: doc-1730639000000-def456
+     태그: api, design
+     "REST API 설계 시 고려해야 할 사항들..."
+
+문서 보기: /docs view <id>
+문서 검색: /docs search <query>
+
+? You: /docs search typescript
+
+🔍 검색 결과: "typescript"
+
+  1. TypeScript 고급 패턴
+     ID: doc-1730640000000-abc123
+     태그: typescript, patterns
+
+? You: /docs view doc-1730640000000-abc123
+
+📄 TypeScript 고급 패턴
+
+ID: doc-1730640000000-abc123
+태그: typescript, patterns
+
+────────────────────────────────────────────────────────────
+
+# TypeScript 고급 패턴
+
+## 제네릭 제약 조건
+
+...문서 내용...
+
+────────────────────────────────────────────────────────────
+```
+
+**문서 파일 위치**: `~/.open-cli/docs/`
+**지원 형식**: Markdown (.md)
+
 ### 5. 개발 모드
 
 개발 중에는 TypeScript를 직접 실행할 수 있습니다:
@@ -395,11 +470,11 @@ open-cli/
 - [x] 파일 시스템 도구 (LLM Tools)
 - [x] 대화형 모드 (Interactive Mode)
 
-### Phase 2: 상호작용 고도화 (진행률: 50% 🚧)
+### Phase 2: 상호작용 고도화 (진행률: 75% 🚧)
 - [x] 세션 저장/로드 기능 (대화 저장 및 복원)
 - [x] 멀티 엔드포인트 관리 (추가, 삭제, 전환)
+- [x] 로컬 문서 시스템 (마크다운 지식 베이스)
 - [ ] 인터랙티브 터미널 UI (Ink/React 기반)
-- [ ] 로컬 문서 시스템
 
 ### Phase 3: 엔터프라이즈 기능 (12-18개월)
 - [ ] 팀 협업 기능
