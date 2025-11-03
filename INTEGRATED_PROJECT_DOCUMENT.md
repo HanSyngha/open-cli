@@ -66,11 +66,12 @@ open-CLI는 **Gemini CLI의 개념을 기업 환경에 맞춰 완전히 재구�
 - ✅ 파일 시스템 도구 (read_file, write_file, list_files, find_files)
 - ✅ 기본 명령어 시스템 (대화형 모드, 메타 명령어)
 
-### Phase 2️⃣: 상호작용 고도화 (6-12개월)
-- 인터랙티브 터미널 UI (Ink/React 기반)
-- 고급 설정 관리
-- 로컬 문서 시스템
-- 사용자 메모리/세션 관리
+### Phase 2️⃣: 상호작용 고도화 (6-12개월) - ✅ 완료 (2025-11-03)
+- ✅ 인터랙티브 터미널 UI (Ink/React 기반 - ESM)
+- ✅ 고급 설정 관리 (멀티 엔드포인트)
+- ✅ 로컬 문서 시스템 (마크다운 지식 베이스)
+- ✅ 사용자 메모리/세션 관리
+- ✅ ESM 마이그레이션 (CommonJS → ES Modules)
 
 ### Phase 3️⃣: 엔터프라이즈 기능 (12-18개월)
 - 팀 협업 기능
@@ -101,8 +102,8 @@ open-CLI는 **Gemini CLI의 개념을 기업 환경에 맞춰 완전히 재구�
 ┌─────────────────────────────────────────┐
 │        Backend (Core Logic)              │
 ├─────────────────────────────────────────┤
-│ • TypeScript (Type safety)              │
-│ • Node.js v20+ (Runtime)                │
+│ • TypeScript (Type safety, ESM)         │
+│ • Node.js v20+ (Runtime, Native ESM)   │
 │ • Axios (HTTP client)                   │
 │ • Zod (Schema validation)               │
 └─────────────────────────────────────────┘

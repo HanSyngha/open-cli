@@ -456,6 +456,7 @@ $ node dist/cli.js config show
 - ✅ **멀티 엔드포인트 관리** - 여러 LLM 엔드포인트 등록 및 전환
 - ✅ **로컬 문서 시스템** - 마크다운 지식 베이스, 검색, 태그 관리 (~/.open-cli/docs/)
 - ✅ **모던 Ink UI** - React 기반 터미널 UI, 실시간 스트리밍, Classic UI 병행 지원
+- ✅ **ESM 마이그레이션** - CommonJS → ES Modules, Gemini CLI 아키텍처 참조
 
 ### Practical Improvements (완료! ✅)
 - ✅ **Error Handling System** - 체계적인 에러 클래스, 사용자 친화적 메시지, 복구 가능 여부 판단
@@ -520,6 +521,7 @@ open-cli/
 - [x] 멀티 엔드포인트 관리 (추가, 삭제, 전환)
 - [x] 로컬 문서 시스템 (마크다운 지식 베이스)
 - [x] 인터랙티브 터미널 UI (Ink/React 기반 - 스트리밍 지원, Classic UI 병행)
+- [x] ESM 마이그레이션 (CommonJS → ES Modules, Gemini CLI 패턴 적용)
 
 ### Phase 3: 엔터프라이즈 기능 (12-18개월)
 - [ ] 팀 협업 기능
@@ -537,14 +539,17 @@ open-cli/
 
 ## 🛠️ 기술 스택
 
-- **언어**: TypeScript
+- **언어**: TypeScript (ESM)
 - **런타임**: Node.js v20+
+- **모듈 시스템**: ES Modules (Native ESM)
 - **CLI 프레임워크**: Commander.js
 - **HTTP 클라이언트**: Axios
 - **터미널 UI**:
-  - Ink + React (Modern UI)
+  - Ink v4.4.1 + React v18.3.1 (Modern UI)
   - Chalk, Ora, Inquirer (Classic UI)
+- **빌드**: TypeScript Compiler (module: NodeNext)
 - **타입 검사**: TypeScript Strict Mode
+- **테스트**: Jest + ts-jest
 - **린팅**: ESLint + @typescript-eslint
 - **포맷팅**: Prettier
 
