@@ -3,11 +3,14 @@
     /* Language and Environment */
     "target": "ES2022",
     "lib": ["ES2022"],
-    "module": "commonjs",
+    "module": "ESNext",
+    "jsx": "react",
+    "jsxFactory": "React.createElement",
+    "jsxFragmentFactory": "React.Fragment",
 
     /* Modules */
     "rootDir": "./src",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"]

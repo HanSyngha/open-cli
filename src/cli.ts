@@ -16,6 +16,8 @@ import { createLLMClient, LLMClient } from './core/llm-client';
 import { sessionManager } from './core/session-manager';
 import { documentManager } from './core/document-manager';
 import { EndpointConfig } from './types';
+import { render } from 'ink';
+import React from 'react';
 
 const program = new Command();
 
@@ -27,7 +29,9 @@ program.name('open').description('OPEN-CLI - 오프라인 기업용 AI 코딩 �
 /**
  * 기본 명령어: 대화형 모드 시작
  */
-program.action(async () => {
+program
+  .option('--classic', 'Use classic inquirer-based UI instead of Ink UI')
+  .action(async (options: { classic?: boolean }) => {
   try {
     // ConfigManager 초기화 확인
     const isInitialized = await configManager.isInitialized();
@@ -49,9 +53,17 @@ program.action(async () => {
     const llmClient = createLLMClient();
     const modelInfo = llmClient.getModelInfo();
 
+    // Ink UI 사용 (--classic 플래그가 없으면 기본값)
+    if (!options.classic) {
+      const { InteractiveApp } = await import('./ui');
+      render(React.createElement(InteractiveApp, { llmClient, modelInfo }));
+      return;
+    }
+
+    // Classic UI (inquirer 기반)
     // 환영 메시지
     console.log(chalk.cyan.bold('\n╔════════════════════════════════════════════════════════════╗'));
-    console.log(chalk.cyan.bold('║                 OPEN-CLI Interactive Mode                  ║'));
+    console.log(chalk.cyan.bold('║              OPEN-CLI Interactive Mode (Classic)           ║'));
     console.log(chalk.cyan.bold('╚════════════════════════════════════════════════════════════╝\n'));
     console.log(chalk.dim('모델: ' + modelInfo.model));
     console.log(chalk.dim('엔드포인트: ' + modelInfo.endpoint + '\n'));
@@ -65,6 +77,7 @@ program.action(async () => {
     console.log(chalk.white('  /endpoint       - 엔드포인트 보기/전환'));
     console.log(chalk.white('  /docs           - 로컬 문서 보기/검색'));
     console.log(chalk.white('  /help           - 도움말\n'));
+    console.log(chalk.dim('Tip: Use "open" without --classic for modern Ink UI\n'));
 
     // 메시지 히스토리
     const messages: import('./types').Message[] = [];
