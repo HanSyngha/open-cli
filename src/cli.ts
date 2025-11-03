@@ -9,6 +9,7 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
+import { configManager } from './core/config-manager';
 
 const program = new Command();
 
@@ -55,10 +56,172 @@ program
     console.log(chalk.yellow('주요 명령어:'));
     console.log(chalk.white('  a2g              대화형 모드 시작'));
     console.log(chalk.white('  a2g help         도움말 표시'));
-    console.log(chalk.white('  a2g version      버전 정보 표시\n'));
+    console.log(chalk.white('  a2g version      버전 정보 표시'));
+    console.log(chalk.white('  a2g config       설정 관리\n'));
+
+    console.log(chalk.yellow('설정 명령어:'));
+    console.log(chalk.white('  a2g config init  A2G-CLI 초기화'));
+    console.log(chalk.white('  a2g config show  현재 설정 표시'));
+    console.log(chalk.white('  a2g config reset 설정 초기화\n'));
 
     console.log(chalk.dim('더 자세한 정보는 문서를 참조하세요.'));
     console.log(chalk.dim('https://github.com/your-repo/a2g-cli\n'));
+  });
+
+/**
+ * config 명령어
+ */
+const configCommand = program.command('config').description('설정 관리');
+
+/**
+ * config init - A2G-CLI 초기화
+ */
+configCommand
+  .command('init')
+  .description('A2G-CLI 초기화 (디렉토리 및 설정 파일 생성)')
+  .action(async () => {
+    try {
+      console.log(chalk.cyan('\n🚀 A2G-CLI 초기화 중...\n'));
+
+      const isInitialized = await configManager.isInitialized();
+
+      if (isInitialized) {
+        console.log(chalk.yellow('⚠️  이미 초기화되어 있습니다.'));
+        console.log(chalk.white('설정을 초기화하려면: a2g config reset\n'));
+        return;
+      }
+
+      await configManager.initialize();
+
+      console.log(chalk.green('✅ 초기화 완료!\n'));
+
+      console.log(chalk.white('생성된 디렉토리 및 파일:'));
+      console.log(chalk.dim('  ~/.a2g-cli/'));
+      console.log(chalk.dim('  ~/.a2g-cli/config.json'));
+      console.log(chalk.dim('  ~/.a2g-cli/sessions/'));
+      console.log(chalk.dim('  ~/.a2g-cli/docs/'));
+      console.log(chalk.dim('  ~/.a2g-cli/backups/'));
+      console.log(chalk.dim('  ~/.a2g-cli/logs/\n'));
+
+      const endpoint = configManager.getCurrentEndpoint();
+      const model = configManager.getCurrentModel();
+
+      console.log(chalk.green('📡 기본 엔드포인트 설정:'));
+      console.log(chalk.white(`  이름: ${endpoint?.name}`));
+      console.log(chalk.white(`  URL: ${endpoint?.baseUrl}`));
+      console.log(chalk.white(`  모델: ${model?.name} (${model?.id})\n`));
+
+      console.log(chalk.cyan('다음 단계:'));
+      console.log(chalk.white('  a2g config show  - 현재 설정 확인'));
+      console.log(chalk.white('  a2g              - 대화형 모드 시작\n'));
+    } catch (error) {
+      console.error(chalk.red('❌ 초기화 실패:'));
+      if (error instanceof Error) {
+        console.error(chalk.red(error.message));
+      }
+      process.exit(1);
+    }
+  });
+
+/**
+ * config show - 현재 설정 표시
+ */
+configCommand
+  .command('show')
+  .description('현재 설정 표시')
+  .action(async () => {
+    try {
+      const isInitialized = await configManager.isInitialized();
+
+      if (!isInitialized) {
+        console.log(chalk.yellow('\n⚠️  A2G-CLI가 초기화되지 않았습니다.'));
+        console.log(chalk.white('초기화: a2g config init\n'));
+        return;
+      }
+
+      await configManager.initialize();
+
+      const config = configManager.getConfig();
+      const endpoint = configManager.getCurrentEndpoint();
+      const model = configManager.getCurrentModel();
+
+      console.log(chalk.cyan.bold('\n📋 A2G-CLI 설정\n'));
+
+      console.log(chalk.yellow('현재 엔드포인트:'));
+      if (endpoint) {
+        console.log(chalk.white(`  ID: ${endpoint.id}`));
+        console.log(chalk.white(`  이름: ${endpoint.name}`));
+        console.log(chalk.white(`  URL: ${endpoint.baseUrl}`));
+        console.log(chalk.white(`  API Key: ${endpoint.apiKey ? '********' : '(없음)'}`));
+        console.log(chalk.white(`  우선순위: ${endpoint.priority || 'N/A'}\n`));
+      } else {
+        console.log(chalk.red('  (설정되지 않음)\n'));
+      }
+
+      console.log(chalk.yellow('현재 모델:'));
+      if (model) {
+        console.log(chalk.white(`  ID: ${model.id}`));
+        console.log(chalk.white(`  이름: ${model.name}`));
+        console.log(chalk.white(`  최대 토큰: ${model.maxTokens.toLocaleString()}`));
+        console.log(chalk.white(`  상태: ${model.enabled ? '✅ 활성' : '❌ 비활성'}`));
+        console.log(
+          chalk.white(
+            `  헬스: ${model.healthStatus === 'healthy' ? '🟢 정상' : model.healthStatus === 'degraded' ? '🟡 저하됨' : '🔴 비정상'}\n`
+          )
+        );
+      } else {
+        console.log(chalk.red('  (설정되지 않음)\n'));
+      }
+
+      console.log(chalk.yellow('전체 설정:'));
+      console.log(chalk.white(`  버전: ${config.version}`));
+      console.log(chalk.white(`  등록된 엔드포인트: ${config.endpoints.length}개`));
+      console.log(chalk.white(`  자동 승인: ${config.settings.autoApprove ? '✅ ON' : '❌ OFF'}`));
+      console.log(chalk.white(`  디버그 모드: ${config.settings.debugMode ? '✅ ON' : '❌ OFF'}`));
+      console.log(
+        chalk.white(`  스트리밍 응답: ${config.settings.streamResponse ? '✅ ON' : '❌ OFF'}`)
+      );
+      console.log(chalk.white(`  자동 저장: ${config.settings.autoSave ? '✅ ON' : '❌ OFF'}\n`));
+    } catch (error) {
+      console.error(chalk.red('❌ 설정 조회 실패:'));
+      if (error instanceof Error) {
+        console.error(chalk.red(error.message));
+      }
+      process.exit(1);
+    }
+  });
+
+/**
+ * config reset - 설정 초기화
+ */
+configCommand
+  .command('reset')
+  .description('설정 초기화 (공장 초기화)')
+  .action(async () => {
+    try {
+      const isInitialized = await configManager.isInitialized();
+
+      if (!isInitialized) {
+        console.log(chalk.yellow('\n⚠️  A2G-CLI가 초기화되지 않았습니다.'));
+        console.log(chalk.white('초기화: a2g config init\n'));
+        return;
+      }
+
+      console.log(chalk.yellow('\n⚠️  경고: 모든 설정이 초기화됩니다.'));
+      console.log(chalk.white('세션 및 백업은 유지됩니다.\n'));
+
+      // 실제 프로덕션에서는 inquirer로 확인 받기
+      await configManager.initialize();
+      await configManager.reset();
+
+      console.log(chalk.green('✅ 설정이 초기화되었습니다.\n'));
+    } catch (error) {
+      console.error(chalk.red('❌ 설정 초기화 실패:'));
+      if (error instanceof Error) {
+        console.error(chalk.red(error.message));
+      }
+      process.exit(1);
+    }
   });
 
 /**

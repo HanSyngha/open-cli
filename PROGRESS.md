@@ -233,6 +233,11 @@ Phase 1 기능이 현재 개발 중입니다.
 - 스트리밍 응답 지원
 - 에러 처리 및 재시도 로직
 
+- 사용가능한 model과 key, endpoint
+- model: gemini-2.0-flash
+- key: AIzaSyAZWTQSWpv7SwK2WeIE28Oy3tjHDE4b5GI
+- endpoint: https://generativelanguage.googleapis.com/v1beta/openai/
+- 차후엔 http 기반 endpoint로도 동작해야됨
 ---
 
 ### 5. [PLANNED] 기본 파일 시스템 도구 구현
