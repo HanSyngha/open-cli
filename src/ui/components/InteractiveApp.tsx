@@ -25,6 +25,7 @@ export const InteractiveApp: React.FC<InteractiveAppProps> = ({ llmClient, model
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
+  const [currentThinking, setCurrentThinking] = useState('');
 
   // 키보드 단축키
   useInput((inputChar: string, key: { ctrl: boolean; shift: boolean; meta: boolean }) => {
@@ -60,6 +61,7 @@ export const InteractiveApp: React.FC<InteractiveAppProps> = ({ llmClient, model
     // LLM 호출
     setIsProcessing(true);
     setCurrentResponse('');
+    setCurrentThinking('');
 
     const newMessages: Message[] = [
       ...messages,
@@ -69,20 +71,69 @@ export const InteractiveApp: React.FC<InteractiveAppProps> = ({ llmClient, model
 
     try {
       // 스트리밍 응답
-      let fullResponse = '';
+      let fullText = '';
+      let thinkingContent = '';
+      let responseContent = '';
+
       for await (const chunk of llmClient.chatCompletionStream({
         messages: newMessages,
       })) {
-        fullResponse += chunk;
-        setCurrentResponse(fullResponse);
+        // chunk에서 실제 content 추출
+        const content = chunk.choices[0]?.delta?.content;
+        if (!content) continue;
+
+        fullText += content;
+
+        // <think> 또는 <thinking> 태그 파싱
+        const thinkOpenRegex = /<think(?:ing)?>/g;
+        const thinkCloseRegex = /<\/think(?:ing)?>/g;
+
+        // Thinking 태그 처리
+        let currentText = fullText;
+        const thinkOpenMatch = currentText.match(thinkOpenRegex);
+        const thinkCloseMatch = currentText.match(thinkCloseRegex);
+
+        if (thinkOpenMatch && !thinkCloseMatch) {
+          // Thinking 시작, 아직 끝나지 않음
+          const parts = currentText.split(thinkOpenRegex);
+          thinkingContent = parts[1] || '';
+          responseContent = parts[0] || '';
+          setCurrentThinking(thinkingContent);
+          setCurrentResponse(responseContent);
+        } else if (thinkOpenMatch && thinkCloseMatch) {
+          // Thinking 완료
+          const thinkStartIdx = currentText.search(thinkOpenRegex);
+          const thinkEndIdx = currentText.search(thinkCloseRegex);
+
+          if (thinkStartIdx !== -1 && thinkEndIdx !== -1) {
+            const beforeThink = currentText.substring(0, thinkStartIdx);
+            const thinkContent = currentText.substring(
+              thinkStartIdx + currentText.match(thinkOpenRegex)![0].length,
+              thinkEndIdx
+            );
+            const afterThink = currentText.substring(
+              thinkEndIdx + currentText.match(thinkCloseRegex)![0].length
+            );
+
+            thinkingContent = thinkContent;
+            responseContent = beforeThink + afterThink;
+            setCurrentThinking(''); // Thinking 완료, 숨김
+            setCurrentResponse(responseContent);
+          }
+        } else {
+          // Thinking 태그 없음, 일반 응답
+          responseContent = currentText;
+          setCurrentResponse(responseContent);
+        }
       }
 
-      // 최종 응답 저장
+      // 최종 응답 저장 (thinking 태그 제거된 버전)
       setMessages([
         ...newMessages,
-        { role: 'assistant', content: fullResponse },
+        { role: 'assistant', content: responseContent || fullText },
       ]);
       setCurrentResponse('');
+      setCurrentThinking('');
     } catch (error) {
       setMessages([
         ...newMessages,
@@ -91,6 +142,7 @@ export const InteractiveApp: React.FC<InteractiveAppProps> = ({ llmClient, model
           content: 'Error: ' + (error instanceof Error ? error.message : 'Unknown error'),
         },
       ]);
+      setCurrentThinking('');
     } finally {
       setIsProcessing(false);
     }
@@ -125,6 +177,18 @@ export const InteractiveApp: React.FC<InteractiveAppProps> = ({ llmClient, model
             <Text>{msg.content}</Text>
           </Box>
         ))}
+
+        {/* Current thinking (if any) */}
+        {isProcessing && currentThinking && (
+          <Box marginBottom={1}>
+            <Box marginRight={1}>
+              <Text bold color="magenta">
+                💭 Thinking:
+              </Text>
+            </Box>
+            <Text dimColor>{currentThinking}</Text>
+          </Box>
+        )}
 
         {/* Current streaming response */}
         {isProcessing && currentResponse && (
