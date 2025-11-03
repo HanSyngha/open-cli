@@ -41,22 +41,35 @@ npm install
 npm run build
 ```
 
-### 2. 초기 설정
+### 2. 초기 설정 (Interactive Init)
 
-OPEN-CLI를 처음 사용하기 전에 초기화가 필요합니다:
+OPEN-CLI를 처음 사용하기 전에 대화형 초기화가 필요합니다:
 
 ```bash
-# OPEN-CLI 초기화 (디렉토리 및 설정 파일 생성)
+# OPEN-CLI 초기화 (엔드포인트 설정 및 연결 확인)
 node dist/cli.js config init
 ```
 
-실행 결과:
+**대화형 설정 프로세스**:
 ```
-🚀 OPEN-CLI 초기화 중...
+🚀 OPEN-CLI 초기화
+
+엔드포인트 정보를 입력해주세요:
+
+? 엔드포인트 이름: My LLM Endpoint
+? Base URL (HTTP/HTTPS): https://generativelanguage.googleapis.com/v1beta/openai/
+? API Key (선택사항, Enter 키 입력 시 스킵): ********
+? Model ID: gemini-2.0-flash
+? Model 이름 (표시용): Gemini 2.0 Flash
+? Max Tokens: 1048576
+
+🔍 엔드포인트 연결 테스트 중...
+
+✔ 연결 성공!
 
 ✅ 초기화 완료!
 
-생성된 디렉토리 및 파일:
+생성된 디렉토리:
   ~/.open-cli/
   ~/.open-cli/config.json
   ~/.open-cli/sessions/
@@ -64,10 +77,22 @@ node dist/cli.js config init
   ~/.open-cli/backups/
   ~/.open-cli/logs/
 
-📡 기본 엔드포인트 설정:
-  이름: Gemini 2.0 Flash (Default)
+📡 등록된 엔드포인트:
+  이름: My LLM Endpoint
   URL: https://generativelanguage.googleapis.com/v1beta/openai/
   모델: Gemini 2.0 Flash (gemini-2.0-flash)
+  상태: 🟢 연결 확인됨
+```
+
+**지원 엔드포인트**:
+- ✅ **HTTPS**: Gemini, OpenAI, Claude 등 클라우드 API
+- ✅ **HTTP**: LiteLLM, Ollama 등 로컬 서버
+
+**API Key 없이 사용** (로컬 LLM):
+```bash
+# Ollama 예시 (API Key 불필요)
+? Base URL: http://localhost:11434/v1/
+? API Key: [Enter 키로 스킵]
 ```
 
 ### 3. 기본 사용법
