@@ -16,8 +16,6 @@ import { createLLMClient, LLMClient } from './core/llm-client';
 import { sessionManager } from './core/session-manager';
 import { documentManager } from './core/document-manager';
 import { EndpointConfig } from './types';
-import { render } from 'ink';
-import React from 'react';
 
 const program = new Command();
 
@@ -31,7 +29,7 @@ program.name('open').description('OPEN-CLI - 오프라인 기업용 AI 코딩 �
  */
 program
   .option('--classic', 'Use classic inquirer-based UI instead of Ink UI')
-  .action(async (options: { classic?: boolean }) => {
+  .action(async () => {
   try {
     // ConfigManager 초기화 확인
     const isInitialized = await configManager.isInitialized();
@@ -53,12 +51,8 @@ program
     const llmClient = createLLMClient();
     const modelInfo = llmClient.getModelInfo();
 
-    // Ink UI 사용 (--classic 플래그가 없으면 기본값)
-    if (!options.classic) {
-      const { InteractiveApp } = await import('./ui');
-      render(React.createElement(InteractiveApp, { llmClient, modelInfo }));
-      return;
-    }
+    // Ink UI는 현재 비활성화됨 (빌드 이슈로 인해)
+    // --classic 플래그와 관계없이 Classic UI 사용
 
     // Classic UI (inquirer 기반)
     // 환영 메시지

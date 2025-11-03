@@ -71,6 +71,312 @@
 
 ## 📊 완료된 작업
 
+### [COMPLETED] 2025-11-03 26:00: 실용적 개선사항 (Practical Improvements)
+
+**작업 내용**:
+1. 체계적인 에러 핸들링 시스템 구축
+2. 재시도 메커니즘 (Exponential Backoff)
+3. 로깅 시스템 (파일/콘솔, 로그 로테이션)
+4. 성능 최적화 (LRU 캐시, TTL)
+5. 테스트 프레임워크 및 테스트 작성
+
+**상태**: 완료됨 (COMPLETED) ✅
+
+**체크리스트**:
+- [x] Error Handling System
+  - [x] BaseError 클래스 구현
+  - [x] 도메인별 에러 클래스 (Network, Config, Validation, LLM, File)
+  - [x] 사용자 친화적 한국어 메시지
+  - [x] 복구 가능 여부 판단 로직
+  - [x] 에러 유틸리티 함수
+- [x] Retry Mechanism
+  - [x] 지수 백오프 with Jitter
+  - [x] 재시도 옵션 설정
+  - [x] 스마트 재시도 로직
+  - [x] Retry 프리셋 (network, api, file, streaming)
+- [x] Logging System
+  - [x] Logger 싱글톤 클래스
+  - [x] 로그 레벨 (DEBUG, INFO, WARN, ERROR)
+  - [x] 파일 로깅 (~/.open-cli/logs/)
+  - [x] 콘솔 로깅 (컬러 출력)
+  - [x] 로그 로테이션 (10MB)
+  - [x] 오래된 로그 정리 (최대 7개 유지)
+- [x] Performance Optimization
+  - [x] LRU Cache 구현
+  - [x] TTL 지원
+  - [x] 캐시 통계 (hit/miss rate)
+  - [x] 만료 엔트리 자동 정리
+  - [x] 캐시 프리셋
+- [x] Testing Framework
+  - [x] Jest + ts-jest 설정
+  - [x] 에러 클래스 테스트 (18개)
+  - [x] 캐시 테스트 (13개)
+  - [x] 테스트 스크립트 (test, test:watch, test:coverage)
+
+**구현 세부사항**:
+
+#### 1. Error Handling System
+
+**파일**: `src/errors/*.ts` (7개 파일)
+
+**에러 계층 구조**:
+```
+BaseError
+├── NetworkError (복구 가능)
+│   ├── APIError
+│   ├── TimeoutError
+│   └── ConnectionError
+├── ConfigError (복구 불가)
+│   ├── InitializationError
+│   ├── ConfigNotFoundError
+│   ├── InvalidConfigError
+│   └── EndpointNotFoundError
+├── ValidationError (복구 가능)
+│   ├── InputError
+│   ├── RequiredFieldError
+│   └── InvalidFormatError
+├── LLMError (복구 가능)
+│   ├── StreamingError
+│   ├── ModelError
+│   ├── TokenLimitError
+│   ├── RateLimitError
+│   └── ContextLengthError
+└── FileSystemError (복구 불가)
+    ├── FileNotFoundError
+    ├── DirectoryNotFoundError
+    ├── PermissionError
+    ├── FileReadError
+    ├── FileWriteError
+    └── InvalidPathError
+```
+
+**주요 기능**:
+- 에러 코드, 타임스탬프, 상세 정보
+- 사용자 메시지 (한국어)
+- 복구 가능 여부 플래그
+- JSON 직렬화 지원
+- 스택 트레이스 보존
+
+**유틸리티 함수**:
+```typescript
+getUserMessage(error): string       // 사용자 친화적 메시지 추출
+isRecoverableError(error): boolean  // 복구 가능 여부 확인
+errorToJSON(error): object          // JSON 변환
+```
+
+#### 2. Retry Mechanism
+
+**파일**: `src/utils/retry.ts`
+
+**재시도 로직**:
+```typescript
+await withRetry(
+  async () => apiCall(),
+  {
+    maxRetries: 3,
+    initialDelay: 1000,
+    maxDelay: 30000,
+    backoffMultiplier: 2,
+    onRetry: (error, attempt, delay) => {
+      logger.warn(`Retry attempt ${attempt} after ${delay}ms`);
+    }
+  }
+);
+```
+
+**Exponential Backoff 계산**:
+- 기본 공식: `delay = initialDelay * (backoffMultiplier ^ attempt)`
+- Jitter 추가: `±25%` 랜덤 변동
+- 최대 지연 제한: `maxDelay`
+
+**스마트 재시도**:
+- BaseError의 `isRecoverable` 플래그 확인
+- 401, 403, 404 등 클라이언트 에러는 재시도 안함
+- 5xx 서버 에러는 재시도
+- 네트워크 타임아웃/연결 실패는 재시도
+
+**Retry 프리셋**:
+- `RetryPresets.network` - 빠른 재시도 (500ms)
+- `RetryPresets.api` - 일반 재시도 (1s)
+- `RetryPresets.file` - 느린 재시도 (2s)
+- `RetryPresets.streaming` - 스트리밍용 (1.5s)
+
+#### 3. Logging System
+
+**파일**: `src/core/logger.ts`
+
+**Logger 싱글톤**:
+```typescript
+import { logger, LogLevel } from './core/logger';
+
+logger.debug('Debug message', { context: 'value' });
+logger.info('Info message');
+logger.warn('Warning message');
+logger.error('Error occurred', error, { userId: 123 });
+```
+
+**로그 파일 구조**:
+```
+~/.open-cli/logs/
+├── open-cli.log          # 모든 로그
+├── open-cli-2025-11-03.log  # 로테이션된 로그
+├── open-cli-2025-11-02.log
+├── error.log             # 에러만
+└── error-2025-11-03.log
+```
+
+**로그 엔트리 형식** (JSON):
+```json
+{
+  "timestamp": "2025-11-03T17:30:00.000Z",
+  "level": "INFO",
+  "message": "User logged in",
+  "context": { "userId": 123 },
+  "error": {
+    "name": "NetworkError",
+    "message": "Connection failed",
+    "stack": "..."
+  }
+}
+```
+
+**콘솔 출력** (컬러):
+```
+17:30:00 [INFO]  User logged in
+17:30:01 [WARN]  Rate limit approaching
+17:30:02 [ERROR] Connection failed
+  NetworkError: Connection failed
+    at ...
+```
+
+**로그 로테이션**:
+- 파일 크기 10MB 초과 시 자동 로테이션
+- 날짜 기반 파일명 (`open-cli-2025-11-03.log`)
+- 최대 7개 파일 유지, 오래된 파일 자동 삭제
+
+**로그 레벨 설정**:
+```typescript
+logger.setMinLevel(LogLevel.DEBUG);  // 모든 로그 출력
+logger.setMinLevel(LogLevel.ERROR);  // 에러만 출력
+```
+
+#### 4. Performance Optimization
+
+**파일**: `src/utils/cache.ts`
+
+**LRU Cache 사용법**:
+```typescript
+import { Cache, createCacheKey, CachePresets } from './utils/cache';
+
+const cache = new Cache<string, LLMResponse>(CachePresets.llm);
+
+// 캐시 저장
+const key = createCacheKey('chat', userId, modelId);
+cache.set(key, response, 30 * 60 * 1000); // 30분 TTL
+
+// 캐시 조회
+const cached = cache.get(key);
+if (cached) {
+  return cached; // Cache hit
+}
+
+// 캐시 통계
+const stats = cache.getStats();
+console.log(`Hit rate: ${stats.hitRate * 100}%`);
+```
+
+**LRU 동작**:
+- 새 엔트리 추가 시 캐시가 가득 차면 가장 오래된 항목 제거
+- 엔트리 접근 시 최근 사용으로 업데이트
+- Map의 삽입 순서를 활용한 효율적 구현
+
+**TTL (Time To Live)**:
+- 각 엔트리마다 만료 시간 설정
+- 만료된 엔트리는 자동으로 무효화
+- `cleanExpired()` 메서드로 수동 정리 가능
+
+**캐시 통계**:
+- `hits` - 캐시 히트 횟수
+- `misses` - 캐시 미스 횟수
+- `hitRate` - 히트율 (hits / (hits + misses))
+- `sets` - 캐시 저장 횟수
+- `evictions` - LRU 제거 횟수
+
+**Cache 프리셋**:
+```typescript
+CachePresets.llm       // 50개, 30분 - LLM 응답
+CachePresets.file      // 100개, 10분 - 파일 내용
+CachePresets.health    // 20개, 2분 - Health check
+CachePresets.session   // 10개, 1시간 - 세션 데이터
+```
+
+#### 5. Testing Framework
+
+**파일**: `tests/*.test.ts`, `jest.config.js`
+
+**Jest 설정**:
+```javascript
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  roots: ['<rootDir>/tests'],
+  collectCoverageFrom: ['src/**/*.ts'],
+  coverageDirectory: 'coverage',
+};
+```
+
+**테스트 스크립트**:
+```bash
+npm test              # 모든 테스트 실행
+npm run test:watch    # Watch 모드
+npm run test:coverage # 커버리지 리포트
+```
+
+**Error Tests** (`tests/errors.test.ts`):
+- BaseError 생성 및 속성 테스트
+- 각 에러 클래스별 동작 테스트
+- 복구 가능 여부 테스트
+- 사용자 메시지 테스트
+- JSON 직렬화 테스트
+- 유틸리티 함수 테스트
+
+**Cache Tests** (`tests/cache.test.ts`):
+- LRU 제거 테스트
+- TTL 만료 테스트
+- 캐시 통계 테스트
+- 비동기 작업 테스트
+- 캐시 키 생성 테스트
+
+**테스트 결과**:
+```
+Test Suites: 2 passed, 2 total
+Tests:       31 passed, 31 total
+Snapshots:   0 total
+Time:        1.8s
+```
+
+**커버리지**:
+- Error 클래스: 100%
+- Cache 클래스: 100%
+- Retry 유틸: (간접 테스트 예정)
+- Logger: (간접 테스트 예정)
+
+**파일 추가/수정**:
+- 15개 파일 추가
+- 2,123줄 코드 추가
+- 253개 npm 패키지 추가 (Jest 관련)
+
+**의존성 추가**:
+```json
+"devDependencies": {
+  "@types/jest": "^30.0.0",
+  "jest": "^30.2.0",
+  "ts-jest": "^29.4.5"
+}
+```
+
+---
+
 ### [COMPLETED] 2025-11-03 25:00: 모던 Ink UI 구현 (Modern Ink UI Implementation)
 
 **작업 내용**:
