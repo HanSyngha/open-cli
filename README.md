@@ -39,6 +39,15 @@ npm install
 
 # TypeScript 빌드
 npm run build
+
+**Global 명령어 사용** (권장):
+# npm link 설정 (한 번만)
+npm link
+
+# 이제 'open' 명령어 사용 가능
+open              # Interactive mode 시작
+open help         # 도움말
+open config show  # 설정 확인
 ```
 
 ### 2. 초기 설정 (Interactive Init)
@@ -46,6 +55,7 @@ npm run build
 OPEN-CLI를 처음 사용하기 전에 대화형 초기화가 필요합니다:
 
 ```bash
+open config init
 # OPEN-CLI 초기화 (엔드포인트 설정 및 연결 확인)
 node dist/cli.js config init
 ```
